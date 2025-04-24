@@ -1,5 +1,8 @@
+import { ExportedHandler } from '@cloudflare/workers-types';
+
 export interface Env {
   AI: any; // Cloudflare AI binding
+  API_KEY: string; // API key for authorization
 }
 
 export default {
@@ -7,6 +10,17 @@ export default {
     // Check if request is coming from Discord
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
+    }
+
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    const token = authHeader.substring('Bearer '.length);
+
+    if (token !== env.API_KEY) {
+      return new Response('Unauthorized', { status: 401 });
     }
 
     try {
@@ -22,7 +36,7 @@ export default {
       // Convert from base64 string
       const binaryString = atob(response.image);
       // Create byte representation
-      const img = Uint8Array.from(binaryString, (m) => m.codePointAt(0));
+      const img = Uint8Array.from(binaryString, (m) => m.charCodeAt(0));
       
       return new Response(img, {
         headers: {
